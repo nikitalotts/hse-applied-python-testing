@@ -8,14 +8,33 @@
 
 Для запуска тестов нужно проделать следующее:
 
-```
-# 1. Установить зависимости
-pip install -r requirements.txt
+1. Установить зависимости
+```pip install -r requirements.txt```
 
-# 2. Сперва обязательно нужно запустить тесты
+2. Создать файл `.env` в корневой директории проекта с содержанием:
+
+```
+DB_HOST = 'postgres'
+DB_PASS = 'changeme'
+DB_PORT = '5432'
+DB_NAME = 'ShortUrlDB'
+DB_USER = 'changeme'
+JWT_SECRET_KEY = 'changeme'
+PASSWORD_SECRET_KEY = 'changeme'
+MESSAGE_BROKER_URL = 'redis://redis:6379'
+LINK_TTL_IN_DAYS = 5
+CODE_GENERATION_ATTEMPTS = 5
+CODE_GENERATION_SECRET = 'changeme'
+SHORT_CODE_LENGTH = '9'
+SITE_IP = 'localhost'
+```
+
+3. Запустить тесты
+```
+# сперва обязательно нужно запустить тесты
 coverage run -m pytest tests
 
-# 3. Получить статистику по покрытию
+# получить статистику по покрытию
 coverage report
 
 # экспорт статистики в html (итоговая уже лежит в htmlcov/index.html - нужно его просто открыть в браузере)
@@ -75,28 +94,10 @@ TOTAL                                     1451     43    97%
 
 Для нагрузочного тестирования использовался Locust. Для того, чтобы его запустить, нужно:
 
-1. Создать файл `.env` в корневой директории проекта с содержанием:
-
-```
-DB_HOST = 'postgres'
-DB_PASS = 'changeme'
-DB_PORT = '5432'
-DB_NAME = 'ShortUrlDB'
-DB_USER = 'changeme'
-JWT_SECRET_KEY = 'changeme'
-PASSWORD_SECRET_KEY = 'changeme'
-MESSAGE_BROKER_URL = 'redis://redis:6379'
-LINK_TTL_IN_DAYS = 5
-CODE_GENERATION_ATTEMPTS = 5
-CODE_GENERATION_SECRET = 'changeme'
-SHORT_CODE_LENGTH = '9'
-SITE_IP = 'localhost'
-```
-
-2. Запустить докер:
+1. Запустить докер:
 `docker compose build && docker compose up`
 
-3. Запустить Locust
+2. Запустить Locust
 
 `locust --host=http://127.0.0.1:8000 --only-summary --print-stat --headless -f tests/locustfile.py -u 100 -r 100 -t 3m`
 
