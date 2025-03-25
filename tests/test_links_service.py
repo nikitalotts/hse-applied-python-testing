@@ -86,6 +86,20 @@ async def test_get_stats_link_not_found(link_service, mock_session):
         result = await link_service.get_stats("short")
         assert result.redirect_counter == 5
 
+@pytest.mark.anyio
+async def test_create(link_service, mock_session, user):
+    mock_session.execute.side_effect = [
+        MagicMock(scalar_one_or_none=MagicMock(return_value=None)),
+        MagicMock(scalar_one_or_none=MagicMock(return_value=None)),
+    ]
+    link = await link_service.create(
+        long_url="http://test.com",
+        custom_alias=None,
+        user=user
+    )
+    assert link.long_url == "http://test.com"
+    mock_session.add.assert_called_once()
+    mock_session.commit.assert_awaited_once()
 
 @pytest.mark.anyio
 async def test_create_with_custom_alias_success(link_service, mock_session, user):
