@@ -95,7 +95,7 @@ TOTAL                                     1451     43    97%
 Для нагрузочного тестирования использовался Locust. Для того, чтобы его запустить, нужно:
 
 1. Запустить докер:
-`docker compose build && docker compose up`
+`docker compose build && docker compose up -d`
 
 2. Запустить Locust
 
