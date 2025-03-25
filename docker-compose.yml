@@ -1,0 +1,152 @@
+services:
+  web:
+    build: .
+    container_name: fastapi_app
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    networks:
+      - short_url_network
+
+  migrations:
+    build: .
+    container_name: migrations_runner
+    command: alembic upgrade head
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    networks:
+      - short_url_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    command: celery --app=src.tasks.beat:app worker -l INFO --purge --pool=solo
+    env_file:
+      - .env
+    depends_on:
+      web:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - short_url_network
+
+  flower:
+    build: .
+    container_name: flower
+    command: celery --app=src.tasks.tasks:app flower --port=5555
+    env_file:
+      - .env
+    depends_on:
+      web:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+    networks:
+      - short_url_network
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: celery --app=src.tasks.beat:app beat -l INFO
+    env_file:
+      - .env
+    depends_on:
+      web:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - short_url_network
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - short_url_network
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - short_url_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:alpine-slim
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs
+    depends_on:
+      web:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - short_url_network
+
+volumes:
+  postgres_data:
+
+networks:
+  short_url_network:
+    driver: bridge
